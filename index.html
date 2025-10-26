@@ -1,0 +1,188 @@
+<!--
+HP PHOTOS - Single-file website (index.html)
+INSTRUCTIONS (quick):
+1) Save this file as `index.html`.
+2) Put your logo image (the gold/black one) in the same folder and name it `logo.png` or change the <img> src in the header.
+3) Add your public images into the `public/` subfolder (or change paths). Example public images are listed in the PUBLIC_IMAGES array in the <script> section.
+4) Add private folder images and 4-digit codes in the PRIVATE_FOLDERS object below. Example folder names: "Taekwondo", "Kaze Bday", "Gender Reveal".
+5) To deploy: push to GitHub and enable GitHub Pages for the repo, or drag the folder to Netlify/GitHub Pages/Vercel — it's static HTML only.
+
+How to edit (simple):
+ - Edit images: change arrays in the JavaScript area (look for PUBLIC_IMAGES and PRIVATE_FOLDERS).
+ - Edit folder list: change PRIVATE_FOLDERS keys.
+ - Change codes: edit the code property for each folder in PRIVATE_FOLDERS.
+
+This file is intentionally dependency-free (no build tools). Works on modern browsers.
+--><!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HP PHOTOS</title>
+  <style>
+    :root{
+      --bg:#0a0a0a;
+      --card:#0f0f0f;
+      --muted:#bfbfbf;
+      --gold:#c79b3a;
+      --accent: linear-gradient(90deg,var(--gold),#e0b75a);
+      --gap:14px;
+      --radius:12px;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;background:var(--bg);color:#eee;line-height:1.25;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;padding:28px;
+    }
+    header{display:flex;align-items:center;justify-content:center;flex-direction:column;margin-bottom:26px}
+    header img{height:88px;object-fit:contain;margin-bottom:8px}
+    header h1{margin:0;font-size:28px;letter-spacing:2px;color:var(--gold);font-weight:700}.container{max-width:1200px;margin:0 auto}
+
+/* Gallery grid */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--gap);margin-bottom:26px}
+.photo{background:var(--card);border-radius:10px;overflow:hidden;cursor:pointer;display:block;position:relative}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.photo:hover img{transform:scale(1.03)}
+.photo .meta{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:8px;font-size:12px;color:var(--muted)}
+
+
+/* Simple modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:999;padding:24px}
+.modal.show{display:flex}
+.modal-card{width:100%;max-width:1000px;background:#060606;border-radius:10px;padding:16px;box-shadow:0 8px 40px rgba(0,0,0,0.6)}
+.modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.modal-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.close{background:transparent;border:0;color:var(--muted);cursor:pointer}
+
+/* input */
+.code-input{display:flex;gap:8px;align-items:center}
+input[type="password"]{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:8px;color:#fff}
+button.primary{background:linear-gradient(90deg,var(--gold),#e0b75a);border:0;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700}
+
+footer{color:var(--muted);margin-top:30px;text-align:center;font-size:13px}
+
+@media (max-width:560px){header img{height:64px} .folder-card{flex-basis:100%}}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <!-- Replace logo.png with your actual file name -->
+      <img src="logo.png" alt="HP PHOTOS logo" id="siteLogo" onerror="this.style.display='none'" />
+      <h1>HP PHOTOS</h1>
+    </header><section>
+  <h2 style="color:var(--muted);margin:0 0 12px 0">Public Gallery</h2>
+  <div id="publicGallery" class="gallery" aria-live="polite"></div>
+</section>
+
+<section style="margin-top:30px">
+  <h2 style="color:var(--muted);margin:0 0 12px 0"></h2>
+  <div class="folders" id="foldersArea"></div>
+</section>
+
+<footer>
+  <div>© <span id="year"></span> HP PHOTOS • Built with a simple static page</div>
+</footer>
+
+  </div> <!-- Modal used to show images (both public single-view and private folder grid) --> <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <strong id="modalTitle">Gallery</strong>
+        <div>
+          <button class="close" onclick="closeModal()">Close ✕</button>
+        </div>
+      </div>
+      <div id="modalBody" class="modal-grid"></div>
+    </div>
+  </div> <!-- Simple prompt modal for code entry --> <div id="codeModal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <strong id="codeModalTitle">Enter 4-digit code</strong>
+        <button class="close" onclick="closeCodeModal()">Close ✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="code-input">
+          <input id="folderCodeInput" type="password" inputmode="numeric" placeholder="1234" maxlength="4" />
+          <button class="primary" onclick="submitFolderCode()">Open</button>
+        </div>
+        <div id="codeMsg" style="color:var(--muted);font-size:13px"></div>
+      </div>
+    </div>
+  </div> <script>
+    // ------------------------
+    // EDITABLE DATA (EASY)
+    // ------------------------
+    // Public gallery image filenames (place them in ./public/ folder)
+    const PUBLIC_IMAGES = [
+      'im1.jpg','im2.jpg','im3.jpg','im4.jpg','im5.jpg','im6.jpg','im7.JPG','im8.JPG','im9.JPG','im10.JPG','im11.JPG','im12.JPG','im13.JPG','im14.JPG','im15.JPG','im16.JPG','im17.JPG','im18.JPG','im19.JPG','im20.JPG','im21.JPG','im22.JPG','im23.JPG','im24.JPG','im25.JPG','im26.JPG','im27.JPG','im28.JPG','im29.JPG','im30.JPG','im31.JPG','im32.JPG','im33.JPG','im34.JPG','im35.JPG','im36.JPG'    ];
+
+    // Private folders: set the 4-digit code and image list for each folder.
+    // Update the keys and values to match your folders and files.
+   
+
+    // ------------------------
+    // End of editable area
+    // ------------------------
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Build public gallery
+    const gallery = document.getElementById('publicGallery');
+    PUBLIC_IMAGES.forEach((p, idx)=>{
+      const a = document.createElement('a'); a.className='photo'; a.href="#";
+      a.innerHTML = `<img data-src="${p}" alt="Public image ${idx+1}" loading="lazy" onerror="this.style.opacity=.6;this.style.objectPosition='center'">`;
+      a.addEventListener('click', (e)=>{e.preventDefault();openModal('Public Gallery', PUBLIC_IMAGES, idx)});
+      gallery.appendChild(a);
+      // lazy load
+      const img = a.querySelector('img'); img.src = p;
+    });
+
+    // Build folders area
+    const foldersArea = document.getElementById('foldersArea');
+    Object.keys(PRIVATE_FOLDERS).forEach((name)=>{
+      const card = document.createElement('div'); card.className='folder-card';
+      const n = document.createElement('div'); n.className='folder-title'; n.textContent = name;
+      const d = document.createElement('div'); d.className='folder-desc'; d.textContent = 'Protected client folder — enter 4-digit code to view.';
+      const btn = document.createElement('button'); btn.className='open-btn'; btn.textContent='Enter code';
+      btn.addEventListener('click', ()=>{openCodePrompt(name)});
+      card.appendChild(n); card.appendChild(d); card.appendChild(btn);
+      foldersArea.appendChild(card);
+    });
+
+    // Modal logic
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    function openModal(title, images, startIdx=0){
+      modalTitle.textContent = title;
+      modalBody.innerHTML = '';
+      images.forEach((src, i)=>{
+        const img = document.createElement('img'); img.src = src; img.alt = title + ' ' + (i+1);
+        img.addEventListener('click', ()=>{ openLightbox(images, i) });
+        modalBody.appendChild(img);
+      });
+      modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+    }
+    function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+
+    // Code prompt modal
+    let activeFolder = null;
+    const codeModal = document.getElementById('codeModal');
+    function openCodePrompt(folderName){ activeFolder = folderName; document.getElementById('codeModalTitle').textContent = `Enter code for "${folderName}"`; document.getElementById('folderCodeInput').value=''; document.getElementById('codeMsg').textContent=''; codeModal.classList.add('show'); codeModal.setAttribute('aria-hidden','false'); }
+    function closeCodeModal(){ activeFolder=null; codeModal.classList.remove('show'); codeModal.setAttribute('aria-hidden','true'); }
+    function submitFolderCode(){ const v = document.getElementById('folderCodeInput').value.trim(); const msg = document.getElementById('codeMsg'); if(!v || v.length!==4){ msg.textContent='Please enter a 4-digit code'; return } const folder = PRIVATE_FOLDERS[activeFolder]; if(!folder){ msg.textContent='Folder not found'; return } if(v === folder.code){ closeCodeModal(); openModal(activeFolder, folder.images); } else { msg.textContent='Incorrect code — try again'; } }
+
+    // Simple lightbox: open single image in full-screen (browser native)
+    function openLightbox(images, idx){ const u = images[idx]; const w = window.open(''); w.document.write(`<html><head><title>Photo</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;"> <img src="${u}" style="max-width:100%;max-height:100%;object-fit:contain"> </body></html>`); }
+
+    // Accessibility: close modal on ESC
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeModal(); closeCodeModal(); } });
+
+    // Small helper: let user change visible logo by dropping a file (optional)
+    // (This is just a tiny convenience during editing; remove if not needed.)
+    // -- end script
+  </script></body>
